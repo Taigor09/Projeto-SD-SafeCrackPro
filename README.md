@@ -84,7 +84,9 @@ stateDiagram-v2
     DESBLOQUEADO --> CONFIGURANDO: KEY0 / Reset
     BLOQUEADO --> CONFIGURANDO: KEY0 / Reset
 ```
-## Diagramas de tempo da simulação (waveforms)
+## Diagramas de tempo da simulação (waveforms) 
+
+<img width="1153" height="494" alt="diagramaDeTempoDaSimulacao" src="https://github.com/user-attachments/assets/858c0596-8296-4cf2-ac9b-110806a70c01" />
 
 ## Descrição de possíveis bugs conhecidos (known issues)
 ### Bounces: 
