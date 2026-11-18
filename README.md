@@ -94,3 +94,6 @@ mais de um "clique" no botão da placa. Isso ocorre devido a própria
 estrutura elastica e metálica dos botões da placa, pode acontecer dos
 contatos metalicos que ficam abaixo dos botões quicarem várias vezes devido a pressões no contato dos botões.
 Isso ao final gera varias ações com apenas um unico clique.
+
+
+![Exemplificando o problema de Bounce em uma imagem](https://github.com/Taigor09/Projeto-SD-SafeCrackPro/blob/Branch_Thiago/Bounce.png?raw=true)
