@@ -87,6 +87,7 @@ stateDiagram-v2
 ## Diagramas de tempo da simulação (waveforms)
 
 <img width="1153" height="494" alt="diagramaDeTempoDaSimulacao" src="https://github.com/user-attachments/assets/858c0596-8296-4cf2-ac9b-110806a70c01" />
+
 ## Descrição de possíveis bugs conhecidos (known issues)
 ### Bounces: 
 pode ocorrer uma oscilação mecânica rápida dos botões de incremento,
