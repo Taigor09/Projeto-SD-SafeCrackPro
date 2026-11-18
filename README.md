@@ -1,4 +1,5 @@
 # Projeto-SD-SafeCrackPro
+## Descrição detalhada de como os requisitos foram implementados
 
 ## Diagrama de Estados
 
@@ -19,3 +20,6 @@ stateDiagram-v2
     DESBLOQUEADO --> CONFIGURANDO: KEY0 / Reset
     BLOQUEADO --> CONFIGURANDO: KEY0 / Reset
 ```
+## Diagramas de tempo da simulação (waveforms)
+
+## Descrição de possíveis bugs conhecidos (known issues)
