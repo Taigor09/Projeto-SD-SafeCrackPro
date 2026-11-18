@@ -87,3 +87,10 @@ stateDiagram-v2
 ## Diagramas de tempo da simulação (waveforms)
 
 ## Descrição de possíveis bugs conhecidos (known issues)
+### Bounces: 
+pode ocorrer uma oscilação mecânica rápida dos botões de incremento,
+decremento, confirmar e reset na fpga o que pode causar na prática
+mais de um "clique" no botão da placa. Isso ocorre devido a própria
+estrutura elastica e metálica dos botões da placa, pode acontecer dos
+contatos metalicos que ficam abaixo dos botões quicarem várias vezes.
+Isso ao final gera varias ações com apenas um unico clique.
