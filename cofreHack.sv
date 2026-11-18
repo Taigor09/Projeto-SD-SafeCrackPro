@@ -6,18 +6,18 @@ module cofreHack (
     output logic [2:0] contador,
     output logic [3:0] v1, v2, v3, v4,
 
-    output logic [7:0] LEDG,                            // LEDs verdes
-    output logic [17:0] LEDR,                            // LEDs vermelhos
-    output logic [6:0] HEX4, HEX3, HEX2, HEX1, HEX0     // displays da FPGA, contador, v1, v2, v3, v4
+    output logic [7:0] LEDG, // LEDs verdes
+    output logic [17:0] LEDR, // LEDs vermelhos
+    output logic [6:0] HEX4, HEX3, HEX2, HEX1, HEX0 // displays da FPGA, contador, v1, v2, v3, v4
 );
 
 // nomes para as lógicas internas do código
 logic clk, rstn;
 logic [2:0] butao;
 
-assign clk = CLOCK_50;                      // clock de 50 MHz
-assign rstn = KEY[0];                        // botão do reset na KEY0
-assign butao = {KEY[1], KEY[2], KEY[3]};      // KEY1 = confirmar, KEY2 = incremento, KEY3 = decremento
+assign clk = CLOCK_50; // clock de 50 MHz
+assign rstn = KEY[0]; // botão do reset na KEY0
+assign butao = {KEY[1], KEY[2], KEY[3]}; // KEY1 = confirmar, KEY2 = incremento, KEY3 = decremento
 
 // DEFINIÇÃO DAS SENHAS
 localparam logic [3:0] SENHA1 = 4'd1;
@@ -53,30 +53,30 @@ logic [$clog2(TEMPO_LIBERADO)-1:0] tempo_atual, proximo_tempo;
 // Basicamente uma função para configurar os valores dos displays (HEX[n]) da FPGA.
 function automatic logic [6:0] decodifica_7seg (input logic [3:0] digito);
     case (digito)
-        4'd0:    decodifica_7seg = 7'b1000000;
-        4'd1:    decodifica_7seg = 7'b1111001;
-        4'd2:    decodifica_7seg = 7'b0100100;
-        4'd3:    decodifica_7seg = 7'b0110000;
-        4'd4:    decodifica_7seg = 7'b0011001;
-        4'd5:    decodifica_7seg = 7'b0010010;
-        4'd6:    decodifica_7seg = 7'b0000010;
-        4'd7:    decodifica_7seg = 7'b1111000;
-        4'd8:    decodifica_7seg = 7'b0000000;
-        4'd9:    decodifica_7seg = 7'b0010000;
+        4'd0: decodifica_7seg = 7'b1000000;
+        4'd1: decodifica_7seg = 7'b1111001;
+        4'd2: decodifica_7seg = 7'b0100100;
+        4'd3: decodifica_7seg = 7'b0110000;
+        4'd4: decodifica_7seg = 7'b0011001;
+        4'd5: decodifica_7seg = 7'b0010010;
+        4'd6: decodifica_7seg = 7'b0000010;
+        4'd7: decodifica_7seg = 7'b1111000;
+        4'd8: decodifica_7seg = 7'b0000000;
+        4'd9: decodifica_7seg = 7'b0010000;
         default: decodifica_7seg = 7'b1111111;
     endcase
 endfunction
 
 always_comb begin // trecho para a verificação de borda, identificação e distinção de ter apertado o botão e estar segurando.
-    butao_dec  = ~butao[0];
-    butao_inc  = ~butao[1];
+    butao_dec = ~butao[0];
+    butao_inc = ~butao[1];
     butao_conf = ~butao[2];
-    apertado = {butao_conf, butao_inc, butao_dec} & ~butao_ant;   // acabou de apertar
-    segurado = {butao_conf, butao_inc, butao_dec} &  butao_ant;   // continua apertado
+    apertado = {butao_conf, butao_inc, butao_dec} & ~butao_ant; // acabou de apertar
+    segurado = {butao_conf, butao_inc, butao_dec} &  butao_ant; // continua apertado
 end
 
 always_ff @(posedge clk or negedge rstn) begin
-    if (~rstn) begin                    // bloco de flip para sempre manter os valores atualizados
+    if (~rstn) begin // bloco de flip para sempre manter os valores atualizados
         butao_ant <= 3'b000; // aqui seria a atualização dos valores caso apertado o reset, todo mundo volta para os estados iniciais.
         estado_atual <= S0;
         v1 <= 4'd0;
@@ -105,11 +105,11 @@ always_comb begin
         S3: valor_atual = v4;
         default: valor_atual = 4'd0;
     endcase
-    if (apertado[1])                    // inc
+    if (apertado[1]) // inc
         novo_valor = (valor_atual == 4'd9 ? 4'd0 : valor_atual + 4'd1);
-    else if (apertado[0])               // dec
+    else if (apertado[0]) // dec
         novo_valor = (valor_atual == 4'd0 ? 4'd9 : valor_atual - 4'd1);
-    else                                // nenhum inc/dec apertado
+    else // nenhum inc/dec apertado
         novo_valor = valor_atual;
 end
 
@@ -164,7 +164,7 @@ end
 
 // as logicas de leds para se for liberado ou não
 always_comb begin
-    liberado     = (estado_atual == LIBERADO);
+    liberado = (estado_atual == LIBERADO);
     nao_liberado = (estado_atual == NAO_LIBERADO);
 
     unique case (estado_atual)
