@@ -1,0 +1,354 @@
+// * ponto 1 * 
+
+module safecrack_pro #(     // inicia a definição de um bloco de hardware e safecrack_pro é o nome do modulo 
+
+  // parameter declara uma constante configuravel , password3 é o nome do parameto 
+  // temos tambem 4'd1 onde 4 é quantidade de bits, 'd é a base decimal e 1 é o valor 
+  // [3:0] larguara de 4 bits , logic é um tipo de dado da linguagem que pode representar 0,1, X ou Z 
+
+
+    parameter logic [3:0] SENHA_3 = 4'd1, // 1º dígito (HEX3)
+    parameter logic [3:0] SENHA_2 = 4'd2, // 2º dígito (HEX2)
+    parameter logic [3:0] SENHA_1 = 4'd3, // 3º dígito (HEX1)
+    parameter logic [3:0] SENHA_0 = 4'd4  // 4º dígito (HEX0) ,  ultimo item da lista 
+)( // aqui o o primeiro ")" fecha a lista de parametros e o "("  abre a lista de portas das entradas e das saidas 
+
+  // Como os displays da DE2-115 são ativos em baixo, o bit 0 acende o segmento e 1 apaga.
+  // o input é o sinal que entra na "caixa" que é o modulo 
+  // clock_50   é um sinal de 1 bit  , ocislador de 50MHz , 50 milhoões de ciclos por segundo
+  // ou seja o clock50 é a entrada de clock de tods os flip flop do circuitp , assim é o sinal que dita o ritmo em que tudo atualiza
+  // [3:0] é um vetor de 4 bits , um por botão 
+  // assim chave[0] Reset , chave[1] confima , chave[2] Incrementa e chave[3] Drecementa
+  
+    input  logic        CLOCK_50,  // Clock de 50 MHz da DE2-115
+    input  logic [3:0]  chave,     
+    
+
+  // o output é o sinal que sai do modulo  
+  // [6:0] são 7 bits , um para cada segmento do dispaly 
+  // como os displays são ativos em baixos , o bit 0 acende o segmento e 1 apaga aqui é ao contrario 
+
+    output logic [6:0]  HEX0,      // Display para o 4º dígito
+    output logic [6:0]  HEX1,      // Display para o 3º dígito
+    output logic [6:0]  HEX2,      // Display para o 2º dígito
+    output logic [6:0]  HEX3,      // Display para o 1º dígito
+    output logic [6:0]  HEX4,      // Display de indicação do dígito ativo (1 a 4)
+
+  // o LEDG [8:0] siginifica 9 bits , quer dizer que 9 leds verdes acendem quando a senha está correta 
+  // [17:0] 18 bits , ou seja acende 18 leds vermelhos quando a senha está incorreta 
+
+    output logic [8:0]  LEDG,      // LEDs Verdes (Feedback de Senha Correta)
+    output logic [17:0] LEDR       // LEDs Vermelhos (Feedback de Senha Incorreta)
+); // o ")" fecha lista de postas e o ";" termina o cabeçalho do modulo 
+
+    // * ponto 2 * 
+
+    // A partir daqui é que comceça o corpo do modulo , sinais intermos ,FSM e a logica 
+    // Definição dos Estados da FSM
+
+
+    // "typedef" cria um novo tipo de dado com  um nome que nós escolhemos 
+    // "enum" o tipo do dado é uma numerção , uma lista de nomes e cada um com um valor fixo 
+    // "logic "  cada valor vai ser guardado em 3bits , do bit 2 até o zero 
+    // e o "{" abre a lista de nomes 
+
+
+    typedef enum logic [2:0] {  
+        EDITAR_DIGITO_1 = 3'b000, // estado de edição com valor 000 , editando o primeiro digito 
+        EDITAR_DIGITO_2 = 3'b001, // estado de edição com valor 001 , editando o segundo digito 
+        EDITAR_DIGITO_3 = 3'b010, // estdo de edição com valor 010 , editando o terceiro digito 
+        EDITAR_DIGITO_4 = 3'b011, // estado de edição com valor 011 , editando quarto digito
+        VERIFICAR       = 3'b100, // estado de verificação , esse é o estado onde o sistema compara os 4 digitos digitados com a senha correta , valor 100 , dura apenas 1 ciclo de clock
+        SUCESSO      = 3'b101, // esse é o estado de resultado , senha correta acende os leds verdes por 5 segundos , valor 101 
+        FALHA      = 3'b110 // esse é o estado de resultado , senha incorreta acende os leds vermelhos por 3 segundos , valor 110 
+    } estado_t; // "}" fecha a lista de estados  , "estado_t" é o nomde do novo tipo que foi acabado de criar . 
+      // detalhe o sufixo _t é uma convenção para indicar "type"
+      // ";" termina a declarção   
+
+    estado_t estado, proximo_estado; // "estado_t" é o tipo que só aceita um dos 7 valores ..;
+    // estado é o nome da primeira variavel , a virgula apenas separa a primeira variavel da segunda 
+    // proximo_estado é o nome da segunda variavel 
+    // o "estado" é o estado atual da FSM , ou seja onde o sistema esta agora e proximo_estado é o proximo estado , ou seja , para onde o sistema vai no proximo ciclo de clock
+
+    // * ponto 3* 
+    
+    // Registradores e Sinais Internos , cria fios e registradores que vai ser usado depois 
+    // 
+    logic [3:0] digitos [0:3];      // Armazena os 4 dígitos compostos pelo usuário  [3:0] cada elemento tem 4 bits(guarda numero de 0 a 9) e o segundo [3:0] é um array de 4 posiçoes , digitos é o nome do sinal 
+    logic [3:0] chave_sincronizada_0, chave_sincronizada_1; // declara dois sinais de 4 bits , um bit para cada chave 
+    logic [3:0] chave_press;         // Pulso ativado no momento do pressionamento do botão (Borda de Descida)
+  //Sinal de 4 bits, um por botão. Vale 1 durante apenas 1 ciclo de clock quando o botão é pressionado (borda de descida) e 0 no resto do tempo. É o sinal que a FSM usa para saber “apertaram o botão”.
+   
+    // TEMPOizadores baseados em CLOCK_50 (50 MHz)
+    // 5 segundos = 250.000.000 ciclos | 3 segundos = 150.000.000 ciclos , TEMPO_5SEC é o nomde da constante 
+    localparam logic [31:0] TEMPO_5SEC = 32'd250_000_000;  // 5 s × 50.000.000 ciclos/s = 250.000.000 , 32 bits, decimal, valor 250 milhões
+    localparam logic [31:0] TEMPO_3SEC = 32'd150_000_000;  //3 s × 50.000.000 ciclos/s = 150.000.000
+    // "localparam" constante fixa , que não pode ser alterada de fora do moddulo   
+
+    logic [31:0] TEMPO_contado; //"logic [31:0]" 32 bits de largura ,Registrador de 32 bits que conta os ciclos de clock enquanto o sistema está em SUCESSO ou FALHA. Ele é comparado com TEMPO_5SEC ou TEMPO_3SEC para saber quando o tempo acabou. conta ciclos
+    logic TEMPO_concluido;   // Sinal de 1 bit (sem [ ]). Vale 1 quando o contado chegou ao fim do tempo. É ele que faz a FSM voltar para EDITAR_DIGITO_1.
+
+    // Reset assíncrono sincronizado no clock (nível baixo em chave[0])
+    logic reset_n; // aqui declar um sinal de 1bit . o sifixo _n é a convenção para ativo em nivel baixo 
+    assign reset_n = chave[0]; ///aqui liga o fio reset_n diretamente ao botão chave[0] 
+    // "assign" cria uma conexão combinacional continua: sempre que chave[0] muda . reset_n muda junto 
+    // botão solto , chave[0] = reset_n = 1 assim o circuito funciona normalmente, já presionado chave[0] = reset_n= 0 assim o rest ativo , tudo volta do incio 
+
+
+    // *ponto 4 * 
+
+    // Detector de Borda de Descida para os Push Buttons (chave é ativo em LOW)
+
+    // chave vale 1 solto e 0 pressionado, então “pressionar” é uma transição de 1 → 0, ou seja, uma borda de descida.
+    // "always"
+    always_ff @(posedge CLOCK_50 or negedge reset_n) begin //Dois gatilhos: o clock (funcionamento normal) e o reset (que age imediatamente, sem esperar o clock). Isso é um reset assíncrono.
+        if (!reset_n) begin // é equivalente a dizer : se reset_n é 0 (reset pressionado)
+            chave_sincronizada_0 <= 4'b1111; //chave_sincronizada_0 <= 4'b1111; e chave_sincronizada_1 <= 4'b1111;: durante o reset, os dois registradores recebem 1111, que significa “nenhum botão pressionado”.
+            chave_sincronizada_1 <= 4'b1111; // Por que 1111 e não 0000? Se iniciassem em 0000, o circuito acharia que tods os botões estão pressionados.
+            //O operador <= é a atribuição não bloqueante, usada em lógica sequencial: tdos os flip-flops atualizam “ao mesmo tempo” na borda do clock.
+    // 
+        end else begin
+            chave_sincronizada_0 <= chave; //captura o valor atual dos 4 botões.
+            chave_sincronizada_1 <= chave_sincronizada_0; // copia o que chave_sincronizada_0 tinha antes deste clock.
+        end
+        //Sincronização: o botão é assíncrono em relação ao clock. Passar por flip-flops reduz o risco de metaestabilidade.
+        // Memória do passado: guarda o valor anterior, necessário para detectar a mudança.
+    end
+
+    // chave_press ativa 1 ciclo de clock na transição de 1 -> 0 (pressionou o botão)
+    //pulso = (antes era 1) AND (agora é 0) , O pulso dura exatamente 1 ciclo (20 ns), mesmo que você segure o botão por segundos. No clock 4, chave_sincronizada_1 já alcançou chave_sincronizada_0, e o pulso some.
+    //chave[0] é o reset, tratado separadamente por reset_n. Por isso chave_press[0] nunca é atribuído (e nunca é usado).
+
+    assign chave_press[3] = chave_sincronizada_1[3] & ~chave_sincronizada_0[3]; // chave[3] - Decrementa
+    assign chave_press[2] = chave_sincronizada_1[2] & ~chave_sincronizada_0[2]; // chave[2] - Incrementa
+    assign chave_press[1] = chave_sincronizada_1[1] & ~chave_sincronizada_0[1]; // chave[1] - Confirma e avança de estado 
+
+    // * Ponto 5 *  
+
+    // Lógica do TEMPOizador de Feedback (LEDs)
+    // Este bloco é um contado de ciclos de clock. 
+    // Ele só conta quando o sistema está em SUCESSO ou FALHA, e avisa com TEMPO_concluido = 1
+    //  quando o tempo acabou (5 s ou 3 s). Esse aviso é o que faz a FSM voltar para EDITAR_DIGITO_1.
+
+    
+    always_ff @(posedge CLOCK_50 or negedge reset_n) begin //executa a cada borda de subida do clock, ou imediatamente se o reset for pressionado (reset assíncrono).
+        if (!reset_n) begin // Se o reset está ativo, zera o contado e o sinal de fim. Se não, entra no else e executa a lógica normal.
+            TEMPO_contado  <= 32'd0;
+            TEMPO_concluido <= 1'b0;
+        end else begin
+            if (estado == SUCESSO) begin // verifica se a FSM está em SUCESSO.
+                if (TEMPO_contado >= TEMPO_5SEC - 1) begin // pergunta o seguinte : o contado já chegou a 249.999.999? , Contando de 0 até 249.999.999, são exatamente 250.000.000 ciclos (5 s). Por isso o - 1.
+                    TEMPO_concluido <= 1'b1; // avisa que o tempo acabou.
+                    TEMPO_contado  <= 32'd0; //  avisa que o tempo acabou.
+                end else begin // Se ainda não chegou:
+                    TEMPO_contado  <= TEMPO_contado + 1'b1; // soma 1 ao contado.
+                    TEMPO_concluido <= 1'b0; // soma 1 ao contado.
+                end
+              // Nos estados de edição e VERIFICAR, o contado fica zerado e parado. Isso garante que, ao
+              //  entrar em SUCESSO ou FALHA, a contagem sempre comece do zero.e
+
+            end else if (estado == FALHA) begin // Mesma lógica do caso anterior, mas comparando com TEMPO_3SEC - 1 (149.999.999), que equivale a 3 s.
+                if (TEMPO_contado >= TEMPO_3SEC - 1) begin
+                    TEMPO_concluido <= 1'b1;
+                    TEMPO_contado  <= 32'd0;
+                end else begin
+                    TEMPO_contado  <= TEMPO_contado + 1'b1;
+                    TEMPO_concluido <= 1'b0;
+                end
+            end else begin  // vale para qualquer outro estado 
+                TEMPO_contado  <= 32'd0; // é o cronometro 
+                TEMPO_concluido <= 1'b0;  // é o alarme 
+            end // "end"  significa fechamento dos blocos 
+        end
+    end
+
+    // * ponto 6 *  
+
+    // Transição de Estados e Modificação dos Dígitos
+    // Este bloco é o coração sequencial do projeto. Ele faz duas coisas no mesmo clock: atualiza o estado da FSM e edita os dígitos da senha.
+    
+    always_ff @(posedge CLOCK_50 or negedge reset_n) begin // posedge CLOCK_50	Executa a cada borda de subida do clock // negedge reset_n	Também executa na hora em que o reset é pressionado // always_ff	Bloco de flip-flops (lógica sequencial) 
+        if (!reset_n) begin  // se chave[0] está pressionado (reset_n = 0).
+            estado     <= EDITAR_DIGITO_1; //  a FSM volta ao primeiro estado.
+            digitos[0] <= 4'd0;   // os quatro dígitos viram 0, e os displays mostram 0000.
+            digitos[1] <= 4'd0;
+            digitos[2] <= 4'd0;
+            digitos[3] <= 4'd0;
+        end else begin // se o reset não está ativo, executa o funcionamento normal abaixo.
+            estado <= proximo_estado; // A cada clock, o estado atual recebe o valor calculado pela lógica combinacional (proximo_estado). É essa linha que faz a FSM “andar” de um estado para outro.
+
+            // O "case" escolhe o que fazer conforme o estado atual. Ele roda no mesmo clock que
+            // estado <= proximo_estado, então estado e dígito são atualizados juntos.
+            
+            // Manipulação do valor do dígito ativo (Incremento/Decremento com Wrap-Around)
+            case (estado)
+                EDITAR_DIGITO_1: begin // este trecho vale quando estado == EDITAR_DIGITO_1. // display HEX3
+                    if (chave_press[2]) // Incrementa (Wrap-around 0-9) // houve pulso de aperto em chave[2] (incrementar)?
+                        digitos[0] <= (digitos[0] == 4'd9) ? 4'd0 : digitos[0] + 1'b1;  // Usa o operador ternário: condição ? valor_se_verdadeiro : valor_se_falso.
+                    else if (chave_press[3]) // Decrementa (Wrap-around 0-9) // se não incrementou, houve aperto em chave[3] (decrementar)?
+                        digitos[0] <= (digitos[0] == 4'd0) ? 4'd9 : digitos[0] - 1'b1; // o dígito é 0, vai para 9. Senão, subtrai 1.
+                end
+
+                EDITAR_DIGITO_2: begin // mesma coisa do anterior // Display HEX2
+                    if (chave_press[2])
+                        digitos[1] <= (digitos[1] == 4'd9) ? 4'd0 : digitos[1] + 1'b1;
+                    else if (chave_press[3])
+                        digitos[1] <= (digitos[1] == 4'd0) ? 4'd9 : digitos[1] - 1'b1;
+                end
+
+                EDITAR_DIGITO_3: begin // mesma coisa do anterior // Display HEX1 
+                    if (chave_press[2])
+                        digitos[2] <= (digitos[2] == 4'd9) ? 4'd0 : digitos[2] + 1'b1;
+                    else if (chave_press[3])
+                        digitos[2] <= (digitos[2] == 4'd0) ? 4'd9 : digitos[2] - 1'b1;
+                end
+
+                EDITAR_DIGITO_4: begin // mesma coisa do anterior // Display HEX0
+                    if (chave_press[2])
+                        digitos[3] <= (digitos[3] == 4'd9) ? 4'd0 : digitos[3] + 1'b1;
+                    else if (chave_press[3])
+                        digitos[3] <= (digitos[3] == 4'd0) ? 4'd9 : digitos[3] - 1'b1;
+                end // Em cada estado, só um dígito pode mudar. É por isso que chave[2] e chave[3] mexem apenas no dígito indicado no HEX4.
+ 
+                SUCESSO, FALHA: begin // agrupa os dois estados no mesmo tratamento.
+                    // Reinicia valores após os tempos de visualização dos LEDs
+                    if (TEMPO_concluido) begin // só age quando o TEMPOizador avisa que o tempo acabou. 
+
+                        digitos[0] <= 4'd0; // Os quatro dígitos voltam a 0.
+                        digitos[1] <= 4'd0;
+                        digitos[2] <= 4'd0;
+                        digitos[3] <= 4'd0;
+                    end
+                end
+
+                default: ; // sozinho é um comando vazio, ou seja, não faz nada. É aqui que cai o VERIFICAR, em que os dígitos não mudam.
+            endcase // fecha o case.
+        end // fecha o else begin do reset.
+    end // : fecha o always_ff.
+
+    // *ponto 7 * 
+
+    // Lógica do Próximo Estado (Next estado Logic - Combinacional)
+    //  Este bloco é combinacional
+    // le não guarda nada. Só decide para qual estado a FSM deve ir no próximo clock
+    // olhando o estado atual e as entradas (chave_press, digitos, TEMPO_concluido). Quem efetivamente muda o estado é o estado <= proximo_estado; do bloco anterior.
+
+
+    always_comb begin // Bloco de lógica combinacional: recalcula sempre que qualquer sinal lido dentro dele muda, sem depender do clock
+        proximo_estado = estado; // Valor padrão: por padrão, o próximo estado é igual ao atual
+        //Se nenhuma condição abaixo for verdadeira (por exemplo, nenhum botão apertado), a FSM permanece onde está.
+        // Garante que proximo_estado receba valor em tdos os caminhos, evitando a criação de latches indesejados.
+        
+        case (estado) // Escolhe o que fazer conforme o estado atual.
+            // Cada linha segue o formato ESTADO: if (condição) proximo_estado = DESTINO;
+            // if (chave_press[1]): houve pulso de aperto em chave[1] (confirmar)?
+            //Se sim, proximo_estado vira o próximo estado da sequência. 
+            //  Se não, nada acontece e vale o padrão (proximo_estado = estado): continua no mesmo estado, esperando.
+            EDITAR_DIGITO_1: if (chave_press[1]) proximo_estado = EDITAR_DIGITO_2;
+            EDITAR_DIGITO_2: if (chave_press[1]) proximo_estado = EDITAR_DIGITO_3;
+            EDITAR_DIGITO_3: if (chave_press[1]) proximo_estado = EDITAR_DIGITO_4;
+            EDITAR_DIGITO_4: if (chave_press[1]) proximo_estado = VERIFICAR;
+            // Note que chave[2] e chave[3] (incrementar/decrementar) não aparecem aqui: eles mudam só o valor do dígito, não o estado. 
+            
+            VERIFICAR: begin //VERIFICAR: begin: vale quando estado == VERIFICAR. Usa begin ... end porque há mais de uma instrução.
+                
+                //Cada (digitos[i] == PASSWORD_x) compara um dígito digitado com o dígito correto da senha.
+                // && é o AND lógico: o resultado só é verdadeiro se as quatro comparações forem verdadeiras.              
+               if ((digitos[0] == SENHA_3) && 
+                    (digitos[1] == SENHA_2) &&
+                    (digitos[2] == SENHA_1) &&
+                    (digitos[3] == SENHA_0))
+                    proximo_estado = SUCESSO; // Tudo igual → proximo_estado = SUCESSO.
+                else
+                    proximo_estado = FALHA; // Qualquer diferença → proximo_estado = FALHA.
+            end
+            // Como não existe condição de espera, o VERIFICAR dura um único ciclo de clock: entra, decide e sai.
+            
+            // Os dois ficam parados até o TEMPOizador avisar com TEMPO_concluido = 1.
+            // aí voltam para EDITAR_DIGITO_1
+            // Enquanto isso, valem o padrão e a FSM permanece no estado (e os LEDs ficam acesos).
+            SUCESSO: if (TEMPO_concluido) proximo_estado = EDITAR_DIGITO_1;
+            FALHA: if (TEMPO_concluido) proximo_estado = EDITAR_DIGITO_1;
+
+            default: proximo_estado = EDITAR_DIGITO_1;
+            // Cobre qualquer valor de estado que não seja um dos 7 definidos (no caso, o código 111).
+            // Normalmente nunca acontece, mas se acontecer por algum erro, a FSM se recupera voltando ao início, em vez de travar.
+        endcase // fecha o case.
+    end  // fecha o always_comb. 
+
+    // *Ponto 8* 
+
+    // Controle dos LEDs de Saída
+    // Esse trecho liga os LEDs conforme o estado da FSM: verdes em SUCESSO e vermelhos em FALHA. Não há clock nem flip-flop aqui, é só lógica combinacional.
+     
+
+     // "assign" Conexão combinacional contínua: LEDG acompanha o lado direito o tempo tod
+     // (estado == SUCESSO)	Condição: a FSM está em SUCESSO? 
+     // ?	Operador ternário: condição ? valor_se_verdadeiro : valor_se_falso
+     //9 bits, hexadecimal, valor 1FF
+     //  9 bits, hexadecimal, valor 000 
+     // Como os LEDs são ativos em alto, 1 acende e 0 apaga. 
+    // “se o estado é SUCESSO, LEDG vale tudo 1 (tdos acesos); senão, vale tudo 0 (tdos apagados)”.
+
+    assign LEDG = (estado == SUCESSO) ? 9'h1FF : 9'h000;   // Tods os LEDs verdes acendem por 5s
+    
+    // 18'h3FFFF = 11 1111 1111 1111 1111 em binário, ou seja, dezoito bits em 1. Acende os 18 LEDs vermelhos.
+    // 18'h0 = tudo 0. Como a largura já está declarada (18'), o valor 0 é estendido para 18 bits, e tdos os LEDs apagam.
+    assign LEDR = (estado == FALHA) ? 18'h3FFFF : 18'h0; // Tods os LEDs vermelhos acendem por 3s
+    // Esse trecho não conta tempo. Ele só olha o estado:
+
+
+
+    // * Ponto 10* 
+
+    // Decodificador de 7 Segmentos (Ativo em Nível Baixo - '0' acende o segmento)
+    
+    //Ele traduz números em desenhos nos displays.
+    //  Já passamos por parte dele, mas agora com o código completo, e a correção dos dígitos 5, 6 e 9 continua valendo (veja a tabela).
+
+
+    // "function" Bloco combinacional reutilizável: você “chama” com um valor e ele devolve outro
+    // "automatic"	Cada chamada usa suas próprias variáveis (necessário, pois a função é chamada em vários lugares ao mesmo tempo)
+    // logic [6:0]	Tipo de retorno: 7 bits, um por segmento
+    // hex_decodificador	Nome da função 
+    // input logic [3:0] val	Entrada: o número de 4 bits a converter
+    // o valor devolvido é dado atribuindo ao próprio nome da função (hex_decodificador = ...).
+
+    function automatic logic [6:0] hex_decodificador(input logic [3:0] val);
+        case (val) // O case compara val com cada opção e executa a linha que combinar.
+            4'h0: hex_decodificador = 7'b100_0000; // 4'h0: 4 bits, hexadecimal, valor 0.
+            4'h1: hex_decodificador = 7'b111_1001; // 7'b100_0000: 7 bits, binário. O _ é só separador visual.
+            4'h2: hex_decodificador = 7'b010_0100;
+            4'h3: hex_decodificador = 7'b011_0000;
+            4'h4: hex_decodificador = 7'b001_1001;
+            4'h5: hex_decodificador = 7'b001_0010;
+            4'h6: hex_decodificador = 7'b000_0010;
+            4'h7: hex_decodificador = 7'b111_1000;
+            4'h8: hex_decodificador = 7'b000_0000;
+            4'h9: hex_decodificador = 7'b001_0000;
+            default: hex_decodificador = 7'b111_1111; // Apagado // default cobre os valores 10 a 15, que val pode ter (4 bits) mas não são dígitos. Tdos os bits em 1 apagam o display inteiro.
+        endcase
+    endfunction
+
+    // Atribuição dos dígitos aos displays de 7 segmentos 
+    // assign é uma conexão combinacional contínua: o display acompanha digitos na hora, sem esperar o clock.
+    // A ordem parece invertida, mas é proposital: digitos[0] é o 1º dígito e vai para o HEX3, o display mais à esquerda da placa. digitos[3] vai para o HEX0, o mais à direita.
+    // O indicador do dígito ativo (HEX4)
+
+    assign HEX3 = hex_decodificador(digitos[0]); // 1º dígito
+    assign HEX2 = hex_decodificador(digitos[1]); // 2º dígito
+    assign HEX1 = hex_decodificador(digitos[2]); // 3º dígito
+    assign HEX0 = hex_decodificador(digitos[3]); // 4º dígito
+
+    // Indicação do Dígito Ativo em HEX4 (Indica de 1 a 4)
+    always_comb begin // always_comb begin	Lógica combinacional: recalcula sempre que estado muda
+        case (estado) // case (estado)	Escolhe conforme o estado atual
+            EDITAR_DIGITO_1: HEX4 = hex_decodificador(4'd1); // EDITAR_DIGITO_1: HEX4 = hex_decodificador(4'd1);	Em EDITAR_DIGITO_1, mostra o número 1
+            EDITAR_DIGITO_2: HEX4 = hex_decodificador(4'd2); // EDITAR_DIGITO_2, 3, 4	Mostram 2, 3 e 4
+            EDITAR_DIGITO_3: HEX4 = hex_decodificador(4'd3);
+            EDITAR_DIGITO_4: HEX4 = hex_decodificador(4'd4);
+            default:      HEX4 = 7'b111_1111; // Apagado durante verificação e resultados // default: HEX4 = 7'b111_1111;	Em VERIFICAR, SUCESSO e FALHA, o display apaga
+        endcase
+    end
+
+endmodule // Fecha o module safecrack_pro aberto no começo do arquivo.
