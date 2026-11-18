@@ -84,9 +84,7 @@ stateDiagram-v2
     DESBLOQUEADO --> CONFIGURANDO: KEY0 / Reset
     BLOQUEADO --> CONFIGURANDO: KEY0 / Reset
 ```
-## Diagramas de tempo da simulação (waveforms) 
-
-<img width="1153" height="494" alt="diagramaDeTempoDaSimulacao" src="https://github.com/user-attachments/assets/858c0596-8296-4cf2-ac9b-110806a70c01" />
+## Diagramas de tempo da simulação (waveforms)
 
 ## Descrição de possíveis bugs conhecidos (known issues)
 ### Bounces: 
@@ -94,5 +92,5 @@ pode ocorrer uma oscilação mecânica rápida dos botões de incremento,
 decremento, confirmar e reset na fpga o que pode causar na prática
 mais de um "clique" no botão da placa. Isso ocorre devido a própria
 estrutura elastica e metálica dos botões da placa, pode acontecer dos
-contatos metalicos que ficam abaixo dos botões quicarem várias vezes.
+contatos metalicos que ficam abaixo dos botões quicarem várias vezes devido a pressões no contato dos botões.
 Isso ao final gera varias ações com apenas um unico clique.
