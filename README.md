@@ -19,4 +19,3 @@ stateDiagram-v2
     DESBLOQUEADO --> CONFIGURANDO: KEY0 / Reset
     BLOQUEADO --> CONFIGURANDO: KEY0 / Reset
 ```
-# esse é o diagrama de estados professor victor me(i)deiros
