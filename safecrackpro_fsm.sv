@@ -192,6 +192,15 @@ module safecrackpro_fsm (
             next_state = VERIFICANDO;
         end
 
+        // No estado de verificação basta somente checar se a senha está correta
+        // ou não e partir disso ir para um dos dois estados de desbloqueado ou bloqueado.
+        else if (state == VERIFICANDO) begin
+            if (senha_correta)
+                next_state = DESBLOQUEADO;
+            else
+                next_state = BLOQUEADO;
+        end
+
         // Se o usuario pós a senha e foi correta, a coisa lógica a se fazer é
         // após terminado o tempo de desbloqueio o sistema voltar ao estado inicial com
         // tudo zerado
@@ -202,15 +211,6 @@ module safecrackpro_fsm (
         // Mesma ideia do desbloqueado so que para o bloqueado.
         else if (state == BLOQUEADO && timer_count >= TEMPO_BLOQUEADO) begin
             next_state = CONFIGURANDO;
-        end
-
-        // No estado de verificação basta somente checar se a senha está correta
-        // ou não e partir disso ir para um dos dois estados de desbloqueado ou bloqueado.
-        else if (state == VERIFICANDO) begin
-            if (senha_correta)
-                next_state = DESBLOQUEADO;
-            else
-                next_state = BLOQUEADO;
         end
     end
 
