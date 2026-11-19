@@ -174,7 +174,7 @@ module safecrackpro_fsm (
     // Esse bloco consiste basicamente em definir o que é a senha correta.
     // Nesse caso é quando os digitos são iguais a senha pré-definida como a certa.
     always_comb begin
-        senha_correta = (digits == SENHA);
+        senha_correta = (digits == SENHA); // compara os 16 bits de digits com os da senha e ve se é true ou false.
     end
 
     // ===============================
