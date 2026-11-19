@@ -1,10 +1,12 @@
+// modulo chamao de Safecrack_pro , basicamente é um bloco de hardware  com entradas e saidas 
+// tudo que estiver dentro do modulo são as portas , ou seja os "fios" que ligam o modulo ao resto do circuito
 module safecrackpro_fsm (
-    input logic clk,
-    input logic [3:0] btn,
+    input logic clk, // entrada de um bit com o clock, ou seja a FSM só muda de estado nas bordas desse sinal 
+    input logic [3:0] btn, // entrada de 4 bits , uma para cada botão da placa , que correspondem as KEYS 
 
     // Armazena os quatro dígitos da senha.
     // Cada posição utiliza 4 bits e começa com valor zero.
-    output logic [3:0][3:0] digits = '0,
+    output logic [3:0][3:0] digits = '0, //  aqui temos a saida que guarda a senha digitada pelo usuario 
 
     // Indica qual dos quatro dígitos está selecionado.
     // O índice interno varia de 0 a 3 e começa na primeira posição.
