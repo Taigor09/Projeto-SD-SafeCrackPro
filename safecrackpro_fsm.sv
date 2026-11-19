@@ -84,8 +84,8 @@ module safecrackpro_fsm (
     // ===================================
 
     // Os valores consideram a frequência de clock de 50 MHz da DE2-115.
-    // 250.000.000 ciclos correspondem a 5 segundos.
-    // 150.000.000 ciclos correspondem a 3 segundos.
+    // 250.000.000 ciclos em 5 segundos.
+    // 150.000.000 ciclos em 3 segundos.
     localparam logic [31:0] TEMPO_DESBLOQUEADO = 32'd250000000;
     localparam logic [31:0] TEMPO_BLOQUEADO = 32'd150000000;
 
