@@ -1,4 +1,4 @@
-// modulo chamao de Safecrack_pro , basicamente é um bloco de hardware  com entradas e saidas 
+// modulo chamado de Safecrack_pro , basicamente é um bloco de hardware  com entradas e saidas 
 // tudo que estiver dentro do modulo são as portas , ou seja os "fios" que ligam o modulo ao resto do circuito
 module safecrackpro_fsm (
     input logic clk, // entrada de um bit com o clock, ou seja a FSM só muda de estado nas bordas desse sinal 
