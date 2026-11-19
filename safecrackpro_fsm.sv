@@ -180,33 +180,32 @@ module safecrackpro_fsm (
     // ===============================
     // LÓGICA DE TRANSIÇÃO DOS ESTADOS
     // ===============================
-
-    // Define o próximo estado da máquina de estados.
-    // Inicialmente, mantém o estado atual, alterando-o somente
-    // quando alguma das condições de transição for satisfeita.
+    // esse bloco é a toda a lógica de transição dos valores e de estados
+    // para os próximos. Vale então o de configuração para o de verificação e os estados de 
+    // desbloqueado ou bloqueado para o estado incial do sistema.
     always_comb begin
-        next_state = state;
+        next_state = state; // próximo estado vai ser igual ao estado atual
 
-        // Após a confirmação do quarto dígito, a FSM deixa
-        // o estado de configuração e passa para a verificação da senha.
+        // Aqui vai a checagem para saber se o estado atual é o de configuração e se o index da lógica de posição
+        // atual é 3 (no caso aqui o ultimo), ele irá para o estado de verificação.
         if (state == CONFIGURANDO && current_position_idx == 2'd3 && btn_edge[BTN_CONFIRMAR]) begin
             next_state = VERIFICANDO;
         end
 
-        // Quando termina o tempo de sinalização do desbloqueio,
-        // a FSM retorna ao estado de configuração para uma nova tentativa.
+        // Se o usuario pós a senha e foi correta, a coisa lógica a se fazer é
+        // após terminado o tempo de desbloqueio o sistema voltar ao estado inicial com
+        // tudo zerado
         else if (state == DESBLOQUEADO && timer_count >= TEMPO_DESBLOQUEADO) begin
             next_state = CONFIGURANDO;
         end
 
-        // Quando termina o tempo de sinalização do bloqueio,
-        // a FSM também retorna ao estado de configuração.
+        // Mesma ideia do desbloqueado so que para o bloqueado.
         else if (state == BLOQUEADO && timer_count >= TEMPO_BLOQUEADO) begin
             next_state = CONFIGURANDO;
         end
 
-        // No estado de verificação, analisa o resultado da comparação:
-        // senha correta leva ao desbloqueio; senha incorreta leva ao bloqueio.
+        // No estado de verificação basta somente checar se a senha está correta
+        // ou não e partir disso ir para um dos dois estados de desbloqueado ou bloqueado.
         else if (state == VERIFICANDO) begin
             if (senha_correta)
                 next_state = DESBLOQUEADO;
@@ -219,13 +218,13 @@ module safecrackpro_fsm (
     // REGISTRADOR DO ESTADO ATUAL
     // ===========================
 
-    // Atualiza o estado da FSM na borda de subida do clock.
-    // O estado inicial é CONFIGURANDO e o KEY0 permite reiniciar
-    // a máquina de estados imediatamente, independentemente do clock.
+    // esse é o bloco de flip-flops que constantemente atualiza as portas lógicas,
+    // o sistema de modo geral ou reseta tudo caso seja apertada a KEY0 que é o botão de
+    // reset do nosso módulo.
     always_ff @(posedge clk or negedge btn[0]) begin
-        if (!btn[0])
-            state <= CONFIGURANDO;
-        else
+        if (!btn[0]) // negação pois o aperto do botão para a FPGA significa 0, quando solto é 1.
+            state <= CONFIGURANDO; // Logo ao apertar o reset o sistema é totalmente atualizado pelos flip-flops pelo estado inicial.
+        else // enquanto não for apertado o reset, as portas continuaram sendo atualizadas com os próximos estados.
             state <= next_state;
     end
 
