@@ -1,10 +1,3 @@
-// ============================================================
-// safecrackpro_fsm.sv
-// ============================================================
-
-// Módulo responsável pelo controle da lógica do cofre SafeCrack Pro.
-// Gerencia a entrada dos quatro dígitos, a confirmação da senha,
-// a indicação do resultado e o retorno automático ao estado inicial.
 module safecrackpro_fsm (
     input logic clk,
     input logic [3:0] btn,
@@ -22,9 +15,9 @@ module safecrackpro_fsm (
     output logic [8:0] led_green
 );
 
-    // =====================================================
+    // ============================
     // DEFINIÇÃO DOS ESTADOS DA FSM
-    // =====================================================
+    // ============================
 
     // Cada estado representa uma etapa do funcionamento do cofre:
     // CONFIGURANDO: permite alterar e confirmar os dígitos da senha.
@@ -45,9 +38,9 @@ module safecrackpro_fsm (
     // Armazena o estado para o qual a FSM deverá avançar.
     estado_t next_state;
 
-    // =====================================================
+    // ===============================
     // DEFINIÇÃO DA SENHA E DOS BOTÕES
-    // =====================================================
+    // ===============================
 
     // Senha correta do cofre: 1-2-3-4.
     // Como a concatenação coloca o elemento mais significativo
@@ -66,9 +59,9 @@ module safecrackpro_fsm (
     localparam int BTN_INCREMENTAR = 2;
     localparam int BTN_DECREMENTAR = 3;
 
-    // =====================================================
+    // ========================
     // REGISTRADORES AUXILIARES
-    // =====================================================
+    // ========================
 
     // Armazena o estado anterior dos três botões de comando.
     // O valor inicial 111 representa todos os botões soltos,
@@ -86,9 +79,9 @@ module safecrackpro_fsm (
     // quando o sistema entrar nos estados DESBLOQUEADO ou BLOQUEADO.
     logic [31:0] timer_count = '0;
 
-    // =====================================================
+    // ===================================
     // DEFINIÇÃO DOS TEMPOS DE SINALIZAÇÃO
-    // =====================================================
+    // ===================================
 
     // Os valores consideram a frequência de clock de 50 MHz da DE2-115.
     // 250.000.000 ciclos correspondem a 5 segundos.
@@ -96,9 +89,9 @@ module safecrackpro_fsm (
     localparam logic [31:0] TEMPO_DESBLOQUEADO = 32'd250000000;
     localparam logic [31:0] TEMPO_BLOQUEADO = 32'd150000000;
 
-    // =====================================================
+    // ============================
     // DETECÇÃO DE BORDA DOS BOTÕES
-    // =====================================================
+    // ============================
 
     // Atualiza o histórico dos botões na borda de subida do clock.
     // O reset assíncrono pelo KEY0 também restaura o histórico
@@ -121,9 +114,9 @@ module safecrackpro_fsm (
         btn_edge = ~btn[3:1] & btn_prev;
     end
 
-    // =====================================================
+    // =============================
     // CONTROLE DOS DÍGITOS DA SENHA
-    // =====================================================
+    // =============================
 
     // Controla os valores dos quatro dígitos e a posição
     // atualmente selecionada pelo usuário.
@@ -139,10 +132,8 @@ module safecrackpro_fsm (
 
         // Quando termina o tempo de sinalização do resultado,
         // os dígitos são apagados e a seleção retorna à primeira posição.
-        else if (
-            (state == DESBLOQUEADO && timer_count >= TEMPO_DESBLOQUEADO) ||
-            (state == BLOQUEADO && timer_count >= TEMPO_BLOQUEADO)
-        ) begin
+        else if ((state == DESBLOQUEADO && timer_count >= TEMPO_DESBLOQUEADO) || (state == BLOQUEADO && timer_count >= TEMPO_BLOQUEADO)) 
+        begin
             digits <= '0;
             current_position_idx <= '0;
         end
@@ -177,21 +168,18 @@ module safecrackpro_fsm (
         end
     end
 
-    // =====================================================
+    // ====================
     // VERIFICAÇÃO DA SENHA
-    // =====================================================
-
-    // Compara continuamente os quatro dígitos inseridos pelo usuário
-    // com a senha armazenada em SENHA.
-    // O resultado será utilizado pela lógica de transição dos estados
-    // quando o usuário confirmar o quarto dígito.
+    // ====================
+    // Esse bloco consiste basicamente em definir o que é a senha correta.
+    // Nesse caso é quando os digitos são iguais a senha pré-definida como a certa.
     always_comb begin
         senha_correta = (digits == SENHA);
     end
 
-    // =====================================================
+    // ===============================
     // LÓGICA DE TRANSIÇÃO DOS ESTADOS
-    // =====================================================
+    // ===============================
 
     // Define o próximo estado da máquina de estados.
     // Inicialmente, mantém o estado atual, alterando-o somente
@@ -227,9 +215,9 @@ module safecrackpro_fsm (
         end
     end
 
-    // =====================================================
+    // ===========================
     // REGISTRADOR DO ESTADO ATUAL
-    // =====================================================
+    // ===========================
 
     // Atualiza o estado da FSM na borda de subida do clock.
     // O estado inicial é CONFIGURANDO e o KEY0 permite reiniciar
@@ -241,9 +229,9 @@ module safecrackpro_fsm (
             state <= next_state;
     end
 
-    // =====================================================
+    // =================
     // CONTROLE DOS LEDS
-    // =====================================================
+    // =================
 
     // Quando a senha está correta e a FSM está no estado DESBLOQUEADO,
     // todos os LEDs verdes são acionados simultaneamente.
@@ -265,9 +253,9 @@ module safecrackpro_fsm (
             led_red = '0;
     end
 
-    // =====================================================
+    // ===========================
     // TEMPORIZADOR DA SINALIZAÇÃO
-    // =====================================================
+    // ===========================
 
     // Conta os ciclos de clock enquanto o sistema sinaliza
     // o resultado da tentativa por meio dos LEDs.
